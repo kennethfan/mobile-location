@@ -8,9 +8,12 @@ on:
   #pull_request:
   #  branches: [ main, master ]
 
+permissions:
+  contents: write  # 关键：添加写入权限
+
 env:
   PYTHON_VERSION: '3.8'
-  PROJECT_NAME: 'phone-query-tool'
+  PROJECT_NAME: 'MobileLocation'
 
 jobs:
   test:
@@ -84,7 +87,7 @@ jobs:
         pyinstaller `
           --onefile `
           --windowed `
-          --name "手机号查询工具" `
+          --name "MobileLocation" `
           --icon "assets/location.ico" `
           --add-data "README.md;." `
           --upx-exclude vcruntime140.dll `
@@ -94,21 +97,23 @@ jobs:
       run: |
         # 创建发布包
         $version = $env:GITHUB_REF -replace "refs/tags/v", ""
-        $packageName = "手机号查询工具-v$version-windows"
+        $packageName = "MobileLocation-v$version-windows"
+        #$packageName = "MobileLocation-windows"
+        $zipFileName = "$packageName.zip"
         
         New-Item -ItemType Directory -Path $packageName
-        Copy-Item dist\手机号查询工具.exe $packageName\
+        Copy-Item dist\MobileLocation.exe $packageName\
         Copy-Item README.md $packageName\
         
         # 创建压缩包
-        Compress-Archive -Path $packageName\* -DestinationPath $packageName.zip
+        Compress-Archive -Path $packageName\* -DestinationPath $zipFileName
 
     - name: Upload Windows artifact
       uses: actions/upload-artifact@v4
       with:
         name: windows-executable
         path: |
-          手机号查询工具-*.zip
+          MobileLocation-*.zip
         retention-days: 30
 
   build-linux:
@@ -145,7 +150,7 @@ jobs:
         pyinstaller \
           --onefile \
           --windowed \
-          --name "phone-query-tool" \
+          --name "MobileLocation" \
           --add-data "README.md:." \
           --upx-exclude libssl.so \
           src/gui.py
@@ -153,12 +158,12 @@ jobs:
     - name: Create Linux release package
       run: |
         version=${GITHUB_REF#refs/tags/v}
-        package_name="phone-query-tool-v${version}-linux"
+        package_name="MobileLocation-v${version}-linux"
         
         mkdir $package_name
-        cp dist/phone-query-tool $package_name/
+        cp dist/MobileLocation $package_name/
         cp README.md $package_name/
-        chmod +x $package_name/phone-query-tool
+        chmod +x $package_name/MobileLocation
         
         tar -czf ${package_name}.tar.gz $package_name
 
@@ -167,7 +172,7 @@ jobs:
       with:
         name: linux-executable
         path: |
-          phone-query-tool-*.tar.gz
+          MobileLocation-*.tar.gz
         retention-days: 30
 
   build-macos:
@@ -200,7 +205,7 @@ jobs:
         pyinstaller \
           --onefile \
           --windowed \
-          --name "PhoneQueryTool" \
+          --name "MobileLocation" \
           --add-data "README.md:." \
           --osx-bundle-identifier "com.yourcompany.phonequery" \
           src/gui.py
@@ -208,31 +213,31 @@ jobs:
     - name: Create macOS release package
       run: |
         version=${GITHUB_REF#refs/tags/v}
-        package_name="PhoneQueryTool-v${version}-macos"
+        package_name="MobileLocation-v${version}-macos"
         
         mkdir $package_name
-        cp dist/PhoneQueryTool $package_name/
+        cp dist/MobileLocation $package_name/
         cp README.md $package_name/
         
         # 创建macOS应用包结构
-        mkdir -p $package_name/PhoneQueryTool.app/Contents/MacOS
-        mkdir -p $package_name/PhoneQueryTool.app/Contents/Resources
+        mkdir -p $package_name/MobileLocation.app/Contents/MacOS
+        mkdir -p $package_name/MobileLocation.app/Contents/Resources
         
-        cp dist/PhoneQueryTool $package_name/PhoneQueryTool.app/Contents/MacOS/
-        cp assets/AppIcon.icns $package_name/PhoneQueryTool.app/Contents/Resources/ 2>/dev/null || true
+        cp dist/MobileLocation $package_name/MobileLocation.app/Contents/MacOS/
+        cp assets/AppIcon.icns $package_name/MobileLocation.app/Contents/Resources/ 2>/dev/null || true
         
         # 创建Info.plist
-        cat > $package_name/PhoneQueryTool.app/Contents/Info.plist << EOF
+        cat > $package_name/MobileLocation.app/Contents/Info.plist << EOF
         <?xml version="1.0" encoding="UTF-8"?>
         <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
         <plist version="1.0">
         <dict>
             <key>CFBundleExecutable</key>
-            <string>PhoneQueryTool</string>
+            <string>MobileLocation</string>
             <key>CFBundleIdentifier</key>
             <string>com.yourcompany.phonequery</string>
             <key>CFBundleName</key>
-            <string>PhoneQueryTool</string>
+            <string>MobileLocation</string>
             <key>CFBundleVersion</key>
             <string>$version</string>
             <key>CFBundleShortVersionString</key>
@@ -248,7 +253,7 @@ jobs:
       with:
         name: macos-executable
         path: |
-          PhoneQueryTool-*.tar.gz
+          MobileLocation-*.tar.gz
         retention-days: 30
 
   create-release:
