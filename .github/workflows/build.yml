@@ -5,8 +5,8 @@ on:
     tags:
       - 'v*'  # 当推送v开头的标签时触发
   workflow_dispatch:  # 允许手动触发
-  #pull_request:
-  #  branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
 
 env:
   PYTHON_VERSION: '3.8'
