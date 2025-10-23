@@ -85,7 +85,7 @@ jobs:
           --onefile `
           --windowed `
           --name "手机号查询工具" `
-          --icon "assets/location.png" `
+          --icon "assets/location.ico" `
           --add-data "README.md;." `
           --upx-exclude vcruntime140.dll `
           src/gui.py
