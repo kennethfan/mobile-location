@@ -99,7 +99,6 @@ jobs:
         New-Item -ItemType Directory -Path $packageName
         Copy-Item dist\手机号查询工具.exe $packageName\
         Copy-Item README.md $packageName\
-        Copy-Item config.ini $packageName\
         
         # 创建压缩包
         Compress-Archive -Path $packageName\* -DestinationPath $packageName.zip
@@ -159,7 +158,6 @@ jobs:
         mkdir $package_name
         cp dist/phone-query-tool $package_name/
         cp README.md $package_name/
-        cp config.ini $package_name/
         chmod +x $package_name/phone-query-tool
         
         tar -czf ${package_name}.tar.gz $package_name
@@ -215,7 +213,6 @@ jobs:
         mkdir $package_name
         cp dist/PhoneQueryTool $package_name/
         cp README.md $package_name/
-        cp config.ini $package_name/
         
         # 创建macOS应用包结构
         mkdir -p $package_name/PhoneQueryTool.app/Contents/MacOS
