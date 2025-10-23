@@ -96,13 +96,14 @@ jobs:
         #$version = $env:GITHUB_REF -replace "refs/tags/v", ""
         #$packageName = "手机号查询工具-v$version-windows"
         $packageName = "手机号查询工具-windows"
+        $zipFileName = "$packageName.zip"
         
         New-Item -ItemType Directory -Path $packageName
         Copy-Item dist\手机号查询工具.exe $packageName\
         Copy-Item README.md $packageName\
         
         # 创建压缩包
-        Compress-Archive -Path $packageName\* -DestinationPath $packageName.zip
+        Compress-Archive -Path $packageName\* -DestinationPath $zipFileName
 
     - name: Upload Windows artifact
       uses: actions/upload-artifact@v4
