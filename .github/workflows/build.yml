@@ -1,0 +1,278 @@
+name: Build and Release Phone Query Tool
+
+on:
+  push:
+    tags:
+      - 'v*'  # 当推送v开头的标签时触发
+  workflow_dispatch:  # 允许手动触发
+  pull_request:
+    branches: [ main, master ]
+
+env:
+  PYTHON_VERSION: '3.8'
+  PROJECT_NAME: 'phone-query-tool'
+
+jobs:
+  test:
+    name: Run Tests
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        python-version: [3.8]
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ matrix.python-version }}
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install pytest
+
+    - name: Run basic tests
+      run: |
+        python -c "import sys; print('Python version:', sys.version)"
+        python -c "import tkinter; print('Tkinter available')"
+        python -c "import requests; print('Requests available')"
+        # 如果有单元测试，可以在这里运行
+        # pytest tests/
+
+  build-windows:
+    name: Build Windows Executable
+    needs: test
+    runs-on: windows-latest
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Python 3.8
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.8'
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install pyinstaller
+        pip install upx
+        # 安装Windows构建依赖
+        pip install pywin32
+
+    - name: Download and setup UPX
+      run: |
+        # 下载UPX进行可执行文件压缩
+        $upxUrl = "https://github.com/upx/upx/releases/download/v3.96/upx-3.96-win64.zip"
+        Invoke-WebRequest -Uri $upxUrl -OutFile upx.zip
+        Expand-Archive upx.zip -DestinationPath upx
+        Move-Item upx\upx-3.96-win64\upx.exe upx.exe
+        Remove-Item upx.zip -Force
+        Remove-Item upx -Recurse -Force
+
+    - name: Build executable
+      run: |
+        # 使用PyInstaller打包
+        pyinstaller `
+          --onefile `
+          --windowed `
+          --name "手机号查询工具" `
+          --icon "assets/phone.ico" `
+          --add-data "README.md;." `
+          --upx-exclude vcruntime140.dll `
+          src/gui.py
+        
+    - name: Create Windows release package
+      run: |
+        # 创建发布包
+        $version = $env:GITHUB_REF -replace "refs/tags/v", ""
+        $packageName = "手机号查询工具-v$version-windows"
+        
+        New-Item -ItemType Directory -Path $packageName
+        Copy-Item dist\手机号查询工具.exe $packageName\
+        Copy-Item README.md $packageName\
+        Copy-Item config.ini $packageName\
+        
+        # 创建压缩包
+        Compress-Archive -Path $packageName\* -DestinationPath $packageName.zip
+
+    - name: Upload Windows artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: windows-executable
+        path: |
+          手机号查询工具-*.zip
+        retention-days: 30
+
+  build-linux:
+    name: Build Linux Executable
+    needs: test
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Python 3.8
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.8'
+
+    - name: Install system dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y python3-tk upx-ucl
+
+    - name: Install Python dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install pyinstaller
+
+    - name: Build executable
+      run: |
+        version=${GITHUB_REF#refs/tags/v}
+        
+        # 构建可执行文件
+        pyinstaller \
+          --onefile \
+          --windowed \
+          --name "phone-query-tool" \
+          --add-data "README.md:." \
+          --upx-exclude libssl.so \
+          src/gui.py
+
+    - name: Create Linux release package
+      run: |
+        version=${GITHUB_REF#refs/tags/v}
+        package_name="phone-query-tool-v${version}-linux"
+        
+        mkdir $package_name
+        cp dist/phone-query-tool $package_name/
+        cp README.md $package_name/
+        cp config.ini $package_name/
+        chmod +x $package_name/phone-query-tool
+        
+        tar -czf ${package_name}.tar.gz $package_name
+
+    - name: Upload Linux artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: linux-executable
+        path: |
+          phone-query-tool-*.tar.gz
+        retention-days: 30
+
+  build-macos:
+    name: Build macOS Executable
+    needs: test
+    runs-on: macos-latest
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Python 3.8
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.8'
+
+    - name: Install Python dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install pyinstaller
+        # macOS需要安装tkinter
+        brew install python-tk
+
+    - name: Build executable
+      run: |
+        version=${GITHUB_REF#refs/tags/v}
+        
+        pyinstaller \
+          --onefile \
+          --windowed \
+          --name "PhoneQueryTool" \
+          --add-data "README.md:." \
+          --osx-bundle-identifier "com.yourcompany.phonequery" \
+          src/gui.py
+
+    - name: Create macOS release package
+      run: |
+        version=${GITHUB_REF#refs/tags/v}
+        package_name="PhoneQueryTool-v${version}-macos"
+        
+        mkdir $package_name
+        cp dist/PhoneQueryTool $package_name/
+        cp README.md $package_name/
+        cp config.ini $package_name/
+        
+        # 创建macOS应用包结构
+        mkdir -p $package_name/PhoneQueryTool.app/Contents/MacOS
+        mkdir -p $package_name/PhoneQueryTool.app/Contents/Resources
+        
+        cp dist/PhoneQueryTool $package_name/PhoneQueryTool.app/Contents/MacOS/
+        cp assets/AppIcon.icns $package_name/PhoneQueryTool.app/Contents/Resources/ 2>/dev/null || true
+        
+        # 创建Info.plist
+        cat > $package_name/PhoneQueryTool.app/Contents/Info.plist << EOF
+        <?xml version="1.0" encoding="UTF-8"?>
+        <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+        <plist version="1.0">
+        <dict>
+            <key>CFBundleExecutable</key>
+            <string>PhoneQueryTool</string>
+            <key>CFBundleIdentifier</key>
+            <string>com.yourcompany.phonequery</string>
+            <key>CFBundleName</key>
+            <string>PhoneQueryTool</string>
+            <key>CFBundleVersion</key>
+            <string>$version</string>
+            <key>CFBundleShortVersionString</key>
+            <string>$version</string>
+        </dict>
+        </plist>
+        EOF
+        
+        tar -czf ${package_name}.tar.gz $package_name
+
+    - name: Upload macOS artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: macos-executable
+        path: |
+          PhoneQueryTool-*.tar.gz
+        retention-days: 30
+
+  create-release:
+    name: Create GitHub Release
+    needs: [build-windows, build-linux, build-macos]
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+
+    steps:
+    - name: Download all artifacts
+      uses: actions/download-artifact@v4
+      with:
+        path: artifacts
+
+    - name: Create Release
+      uses: softprops/action-gh-release@v1
+      with:
+        files: |
+          artifacts/windows-executable/*.zip
+          artifacts/linux-executable/*.tar.gz
+          artifacts/macos-executable/*.tar.gz
+        generate_release_notes: true
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
