@@ -16,6 +16,7 @@ dependencies = [
     "requests>=2.25.0",
     "beautifulsoup4>=4.9.0",
     "lxml>=4.6.0"
+    "openpyxl==3.0.10"
 ]
 
 [project.scripts]
