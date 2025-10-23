@@ -93,8 +93,9 @@ jobs:
     - name: Create Windows release package
       run: |
         # 创建发布包
-        $version = $env:GITHUB_REF -replace "refs/tags/v", ""
-        $packageName = "手机号查询工具-v$version-windows"
+        #$version = $env:GITHUB_REF -replace "refs/tags/v", ""
+        #$packageName = "手机号查询工具-v$version-windows"
+        $packageName = "手机号查询工具-windows"
         
         New-Item -ItemType Directory -Path $packageName
         Copy-Item dist\手机号查询工具.exe $packageName\
